@@ -1,8 +1,7 @@
-import json
-
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -64,6 +63,17 @@ def product_list_api(request):
 @api_view(['POST'])
 def register_order(request):
     food_order = request.data
+    try:
+        food_order['products']
+    except KeyError:
+        content = {"products": "obligatory field"}
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+    if not food_order['products']:
+        content = {"products": "field cannot be empty"}
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+    if not isinstance(food_order['products'], list):
+        content = {"products": "expected list with values"}
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
 
     order, created = Order.objects.get_or_create(
         firstname=food_order['firstname'],
@@ -71,7 +81,6 @@ def register_order(request):
         phonenumber=food_order['phonenumber'],
         address=food_order['address'],
     )
-
     for product_order in food_order['products']:
         product = get_object_or_404(Product.objects.prefetch_related('products'), id=product_order['product'])
         OrderElements.objects.get_or_create(
