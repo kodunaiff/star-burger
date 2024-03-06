@@ -1,3 +1,4 @@
+import phonenumbers
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
@@ -5,8 +6,6 @@ from phonenumbers import NumberParseException
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-import phonenumbers
-
 
 from .models import Product, Order, OrderElements
 
@@ -66,19 +65,24 @@ def product_list_api(request):
 def check_fields(food_order):
     list_key = ['products', 'firstname', 'lastname', 'phonenumber', 'address']
     obligatory_fields = []
+    empty_fields = []
     product_amount = Product.objects.all().count()
 
     for key in list_key:
         try:
             food_order[key]
         except KeyError:
-
             obligatory_fields.append(key)
-            content = {f"{obligatory_fields}": "obligatory field"}
-            return True, content
+    if obligatory_fields:
+        content = {f"{obligatory_fields}": "field cannot be empty"}
+        return True, content
+
+    for key in list_key:
         if not food_order[key]:
-            content = {f"{key}": "field cannot be empty"}
-            return True, content
+            empty_fields.append(key)
+    if empty_fields:
+        content = {f"{empty_fields}": "field cannot be empty"}
+        return True, content
 
     if not isinstance(food_order['products'], list):
         content = {"products": "expected list with values"}
@@ -104,8 +108,6 @@ def check_fields(food_order):
     return False, None
 
 
-
-
 @api_view(['POST'])
 def register_order(request):
     try:
@@ -118,7 +120,6 @@ def register_order(request):
     is_f, content = check_fields(food_order)
     if is_f:
         return Response(content, status=status.HTTP_400_BAD_REQUEST)
-
 
     order, created = Order.objects.get_or_create(
         firstname=food_order['firstname'],
@@ -137,4 +138,4 @@ def register_order(request):
     content = {"fields_all": "ok"}
     return Response(content, status=status.HTTP_200_OK)
 
-    #return JsonResponse({})
+    # return JsonResponse({})
