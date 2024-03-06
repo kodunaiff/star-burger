@@ -1,9 +1,12 @@
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
+from phonenumbers import NumberParseException
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+import phonenumbers
+
 
 from .models import Product, Order, OrderElements
 
@@ -60,20 +63,62 @@ def product_list_api(request):
     })
 
 
-@api_view(['POST'])
-def register_order(request):
-    food_order = request.data
-    try:
-        food_order['products']
-    except KeyError:
-        content = {"products": "obligatory field"}
-        return Response(content, status=status.HTTP_400_BAD_REQUEST)
-    if not food_order['products']:
-        content = {"products": "field cannot be empty"}
-        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+def check_fields(food_order):
+    list_key = ['products', 'firstname', 'lastname', 'phonenumber', 'address']
+    obligatory_fields = []
+    product_amount = Product.objects.all().count()
+
+    for key in list_key:
+        try:
+            food_order[key]
+        except KeyError:
+
+            obligatory_fields.append(key)
+            content = {f"{obligatory_fields}": "obligatory field"}
+            return True, content
+        if not food_order[key]:
+            content = {f"{key}": "field cannot be empty"}
+            return True, content
+
     if not isinstance(food_order['products'], list):
         content = {"products": "expected list with values"}
+        return True, content
+    for field in ['firstname', 'lastname', 'address']:
+        if not isinstance(food_order[field], str):
+            content = {f"{field}": "expected string"}
+            return True, content
+
+    try:
+        if not phonenumbers.is_valid_number(phonenumbers.parse(food_order['phonenumber'])):
+            content = {"phonenumber": "fail"}
+            return True, content
+    except NumberParseException:
+        content = {"phonenumber": "fail"}
+        return True, content
+
+    for prod in food_order['products']:
+        if prod['product'] > product_amount or not isinstance(prod['product'], int):
+            content = {"products": f"Invalid primary key - {prod['product']}"}
+            return True, content
+
+    return False, None
+
+
+
+
+@api_view(['POST'])
+def register_order(request):
+    try:
+        food_order = request.data
+    except ValueError as error:
+        return JsonResponse({
+            "Error": error
+        })
+
+    is_f, content = check_fields(food_order)
+    if is_f:
         return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
 
     order, created = Order.objects.get_or_create(
         firstname=food_order['firstname'],
@@ -88,5 +133,8 @@ def register_order(request):
             product=product,
             count=product_order['quantity']
         )
-    # return Response(food_order)
-    return JsonResponse({})
+    print(food_order['products'])
+    content = {"fields_all": "ok"}
+    return Response(content, status=status.HTTP_200_OK)
+
+    #return JsonResponse({})
