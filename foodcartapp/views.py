@@ -67,11 +67,11 @@ class OrderElementsSerializer(ModelSerializer):
 
 
 class OrderSerializer(ModelSerializer):
-    products = OrderElementsSerializer(many=True)
+    products = OrderElementsSerializer(many=True, write_only=True, allow_empty=False)
 
     class Meta:
         model = Order
-        fields = ["firstname", "lastname", "phonenumber", "address", "products"]
+        fields = ["id", "firstname", "lastname", "phonenumber", "address", "products"]
 
 
 @api_view(['POST'])
@@ -85,8 +85,6 @@ def register_order(request):
 
     serializer = OrderSerializer(data=food_order)
     serializer.is_valid(raise_exception=True)
-    if not food_order['products']:
-        raise ValidationError('Expects field be a list')
 
     order = Order.objects.create(
         firstname=serializer.validated_data['firstname'],
@@ -99,6 +97,6 @@ def register_order(request):
     products = [OrderElements(order=order, **fields) for fields in product_fields]
     OrderElements.objects.bulk_create(products)
 
-    return Response({
-        "order_id": order.id,
-    })
+    result = OrderSerializer(order)
+
+    return Response(result.data)
