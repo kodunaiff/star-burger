@@ -132,6 +132,6 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(OrderElements)
 class OrderElementsAdmin(admin.ModelAdmin):
-    list_display = ['order', 'product', 'count']
+    list_display = ['order', 'product', 'quantity']
     raw_id_fields = ['product']
 

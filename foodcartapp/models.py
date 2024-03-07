@@ -157,9 +157,9 @@ class OrderElements(models.Model):
     )
     product = models.ForeignKey(
         'Product', verbose_name='Товар',
-        on_delete=models.CASCADE, related_name='products'
+        on_delete=models.CASCADE, related_name='items'
     )
-    count = models.IntegerField(
+    quantity = models.IntegerField(
         verbose_name='количество',
         validators=[MinValueValidator(0),
                     MaxValueValidator(100)]

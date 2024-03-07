@@ -1,11 +1,9 @@
-import phonenumbers
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
-from phonenumbers import NumberParseException
-from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.serializers import ModelSerializer
 
 from .models import Product, Order, OrderElements
 
@@ -62,50 +60,18 @@ def product_list_api(request):
     })
 
 
-def check_fields(food_order):
-    list_key = ['products', 'firstname', 'lastname', 'phonenumber', 'address']
-    obligatory_fields = []
-    empty_fields = []
-    product_amount = Product.objects.all().count()
+class OrderElementsSerializer(ModelSerializer):
+    class Meta:
+        model = OrderElements
+        fields = ["product", "quantity"]
 
-    for key in list_key:
-        try:
-            food_order[key]
-        except KeyError:
-            obligatory_fields.append(key)
-    if obligatory_fields:
-        content = {f"{obligatory_fields}": "field cannot be empty"}
-        return True, content
 
-    for key in list_key:
-        if not food_order[key]:
-            empty_fields.append(key)
-    if empty_fields:
-        content = {f"{empty_fields}": "field cannot be empty"}
-        return True, content
+class OrderSerializer(ModelSerializer):
+    products = OrderElementsSerializer(many=True)
 
-    if not isinstance(food_order['products'], list):
-        content = {"products": "expected list with values"}
-        return True, content
-    for field in ['firstname', 'lastname', 'address']:
-        if not isinstance(food_order[field], str):
-            content = {f"{field}": "expected string"}
-            return True, content
-
-    try:
-        if not phonenumbers.is_valid_number(phonenumbers.parse(food_order['phonenumber'])):
-            content = {"phonenumber": "fail"}
-            return True, content
-    except NumberParseException:
-        content = {"phonenumber": "fail"}
-        return True, content
-
-    for prod in food_order['products']:
-        if prod['product'] > product_amount or not isinstance(prod['product'], int):
-            content = {"products": f"Invalid primary key - {prod['product']}"}
-            return True, content
-
-    return False, None
+    class Meta:
+        model = Order
+        fields = ["firstname", "lastname", "phonenumber", "address", "products"]
 
 
 @api_view(['POST'])
@@ -117,25 +83,22 @@ def register_order(request):
             "Error": error
         })
 
-    is_f, content = check_fields(food_order)
-    if is_f:
-        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+    serializer = OrderSerializer(data=food_order)
+    serializer.is_valid(raise_exception=True)
+    if not food_order['products']:
+        raise ValidationError('Expects field be a list')
 
-    order, created = Order.objects.get_or_create(
-        firstname=food_order['firstname'],
-        lastname=food_order['lastname'],
-        phonenumber=food_order['phonenumber'],
-        address=food_order['address'],
+    order = Order.objects.create(
+        firstname=serializer.validated_data['firstname'],
+        lastname=serializer.validated_data['lastname'],
+        phonenumber=serializer.validated_data['phonenumber'],
+        address=serializer.validated_data['address'],
     )
-    for product_order in food_order['products']:
-        product = get_object_or_404(Product.objects.prefetch_related('products'), id=product_order['product'])
-        OrderElements.objects.get_or_create(
-            order=order,
-            product=product,
-            count=product_order['quantity']
-        )
-    print(food_order['products'])
-    content = {"fields_all": "ok"}
-    return Response(content, status=status.HTTP_200_OK)
 
-    # return JsonResponse({})
+    product_fields = serializer.validated_data['products']
+    products = [OrderElements(order=order, **fields) for fields in product_fields]
+    OrderElements.objects.bulk_create(products)
+
+    return Response({
+        "order_id": order.id,
+    })
