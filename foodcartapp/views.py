@@ -1,7 +1,6 @@
 from django.http import JsonResponse
 from django.templatetags.static import static
 from rest_framework.decorators import api_view
-from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.serializers import ModelSerializer
 
