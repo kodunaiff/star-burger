@@ -1,14 +1,12 @@
 from django import forms
-from django.shortcuts import redirect, render
-from django.views import View
-from django.urls import reverse_lazy
-from django.contrib.auth.decorators import user_passes_test
-
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
+from django.contrib.auth.decorators import user_passes_test
+from django.shortcuts import redirect, render
+from django.urls import reverse_lazy
+from django.views import View
 
 from foodcartapp.models import Product, Restaurant, Order
-from foodcartapp.views import OrderSerializer
 
 
 class Login(forms.Form):
@@ -92,8 +90,21 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders = Order.objects.all()
+    orders = Order.objects.prefetch_related('orders').calculate_order()
+    order_items = []
 
-    order_items = [OrderSerializer(item).data for item in orders]
+    for order in orders:
+        item = {
+            'id': order.id,
+            'total': order.total,
+            'firstname': order.firstname,
+            'lastname': order.lastname,
+            'phonenumber': order.phonenumber,
+            'address': order.address
+        }
+        order_items.append(item)
+
+    # order_items = [OrderSerializer(item).data for item in orders]
+    # print(orders[0].orders.all())
 
     return render(request, template_name='order_items.html', context={'order_items': order_items})
