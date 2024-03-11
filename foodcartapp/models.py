@@ -173,6 +173,13 @@ class OrderElements(models.Model):
         validators=[MinValueValidator(0),
                     MaxValueValidator(100)]
     )
+    position_cost = models.DecimalField(
+        verbose_name='стоимость позиции',
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(0)]
+    )
+
 
     class Meta:
         ordering = ['order']
