@@ -99,7 +99,7 @@ def register_order(request):
     prices = {product.id: product.price for product in products}
     order_items = [OrderElements(
         order=order,
-        position_cost=prices[fields['product'].id],
+        position_cost=prices[fields['product'].id]*fields['quantity'],
         **fields) for fields in product_fields
     ]
 
