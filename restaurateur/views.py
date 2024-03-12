@@ -103,6 +103,7 @@ def view_orders(request):
             'address': order.address,
             'status':order.get_status_display(),
             'comment':order.comment,
+            'payment':order.get_payment_display(),
         }
         order_items.append(item)
 
