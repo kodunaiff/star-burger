@@ -1,3 +1,5 @@
+from django.utils import timezone
+
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import Count, F, Sum
@@ -165,6 +167,23 @@ class Order(models.Model):
     comment = models.TextField(
         verbose_name='комментарий',
         blank=True,
+    )
+    created_at = models.DateTimeField(
+        verbose_name='время создания',
+        default=timezone.now,
+        db_index=True,
+    )
+    called_at = models.DateTimeField(
+        verbose_name='время созвона',
+        blank=True,
+        null=True,
+        db_index=True,
+    )
+    delivered_at = models.DateTimeField(
+        verbose_name='время доставки',
+        blank=True,
+        null=True,
+        db_index=True,
     )
     objects = OrderQuerySet.as_manager()
 
