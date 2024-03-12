@@ -133,6 +133,12 @@ class OrderQuerySet(models.QuerySet):
 
 
 class Order(models.Model):
+    STATUS_CHOICES = [
+        ('new', 'Новый'),
+        ('confirmed', 'Подтвержден'),
+        ('packed', 'Собран'),
+        ('delivered', 'Доставлен'),
+    ]
     firstname = models.CharField(
         'Имя',
         max_length=50
@@ -148,6 +154,13 @@ class Order(models.Model):
     address = models.TextField(
         'Адрес доставки',
         help_text='Город, улица, дом'
+    )
+    status = models.CharField(
+        verbose_name="статус заказа",
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='new',
+        db_index=True,
     )
     objects = OrderQuerySet.as_manager()
 
