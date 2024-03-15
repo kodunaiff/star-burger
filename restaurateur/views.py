@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import View
 
-from foodcartapp.models import Product, Restaurant, Order
+from foodcartapp.models import Product, Restaurant, Order, OrderElements, RestaurantMenuItem
 
 
 class Login(forms.Form):
@@ -90,8 +90,26 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders = Order.objects.prefetch_related('orders').calculate_order()
+    orders = Order.objects.prefetch_related('orders').calculate_order().order_by("id")
     order_items = []
+    menu_items = RestaurantMenuItem.objects.select_related("product", "restaurant")
+
+    restaurant_contents = {}
+    for item in menu_items:
+        restaurant_contents[item.restaurant] = [
+            menu_item.product.id for menu_item in menu_items.filter(restaurant=item.restaurant)
+        ]
+    for order in orders:
+        restaurants = []
+        for restaurant in restaurant_contents:
+
+            suitable_restaurants = [
+                product in restaurant_contents[restaurant]
+                for product in order.orders.values_list("product", flat=True)
+            ]
+            if False not in suitable_restaurants:
+                restaurants.append(restaurant)
+        order.suitable_restaurants = restaurants
 
     for order in orders:
         item = {
@@ -101,13 +119,12 @@ def view_orders(request):
             'lastname': order.lastname,
             'phonenumber': order.phonenumber,
             'address': order.address,
-            'status':order.get_status_display(),
-            'comment':order.comment,
-            'payment':order.get_payment_display(),
+            'status': order.get_status_display(),
+            'comment': order.comment,
+            'payment': order.get_payment_display(),
+            'suitable_restaurants': order.suitable_restaurants,
+            'restaurant': order.restaurant,
         }
         order_items.append(item)
-
-    # order_items = [OrderSerializer(item).data for item in orders]
-    # print(orders[0].orders.all())
 
     return render(request, template_name='order_items.html', context={'order_items': order_items})

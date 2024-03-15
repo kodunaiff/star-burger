@@ -198,6 +198,14 @@ class Order(models.Model):
         default='unknown',
         db_index=True,
     )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        verbose_name="готовит",
+        related_name="r_orders",
+        null=True,
+        blank=True,
+    )
     objects = OrderQuerySet.as_manager()
 
     class Meta:
@@ -236,4 +244,4 @@ class OrderElements(models.Model):
         verbose_name_plural = 'элементы заказа'
 
     def __str__(self):
-        return f"{self.order.firstname} - {self.product.name}"
+        return f"{self.order} - {self.product}"
