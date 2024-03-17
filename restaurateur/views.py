@@ -5,6 +5,9 @@ from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import View
+import requests
+from django.conf import settings
+from geopy import distance
 
 from foodcartapp.models import Product, Restaurant, Order, OrderElements, RestaurantMenuItem
 
@@ -87,22 +90,50 @@ def view_restaurants(request):
         'restaurants': Restaurant.objects.all(),
     })
 
+def fetch_coordinates(apikey, address):
+    base_url = "https://geocode-maps.yandex.ru/1.x"
+    response = requests.get(base_url, params={
+        "geocode": address,
+        "apikey": apikey,
+        "format": "json",
+    })
+    response.raise_for_status()
+    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
+
+    if not found_places:
+        return None
+
+    most_relevant = found_places[0]
+    lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
+    return lat, lon
+
+def calculate_distance(order_address, restaurant_address):
+    try:
+        order_coords = fetch_coordinates(settings.YANDEX_API_KEY, order_address)
+        restaurant_coords = fetch_coordinates(settings.YANDEX_API_KEY, restaurant_address)
+    except (requests.HTTPError, requests.ConnectionError):
+        return "Ошибка определения координат"
+    if not order_coords:
+        return "Ошибка определения координат"
+    distance_to_restaurant = distance.distance(restaurant_coords, order_coords)
+    return distance_to_restaurant.km
+
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders = Order.objects.prefetch_related('orders').calculate_order().order_by("id")
+    orders = Order.objects.exclude(status='deliv').prefetch_related('orders').calculate_order().ordered_by_status_and_id()
     order_items = []
-    menu_items = RestaurantMenuItem.objects.select_related("product", "restaurant")
+    menu_items = RestaurantMenuItem.objects.prefetch_related('product', 'restaurant')
 
     restaurant_contents = {}
     for item in menu_items:
         restaurant_contents[item.restaurant] = [
             menu_item.product.id for menu_item in menu_items.filter(restaurant=item.restaurant)
         ]
+
     for order in orders:
         restaurants = []
         for restaurant in restaurant_contents:
-
             suitable_restaurants = [
                 product in restaurant_contents[restaurant]
                 for product in order.orders.values_list("product", flat=True)
@@ -122,9 +153,13 @@ def view_orders(request):
             'status': order.get_status_display(),
             'comment': order.comment,
             'payment': order.get_payment_display(),
-            'suitable_restaurants': order.suitable_restaurants,
+            "suitable_restaurants": [{
+                "restaurant": restaurant,
+                "distance": calculate_distance(restaurant.address, order.address)
+            } for restaurant in order.suitable_restaurants],
             'restaurant': order.restaurant,
         }
         order_items.append(item)
+
 
     return render(request, template_name='order_items.html', context={'order_items': order_items})

@@ -43,7 +43,7 @@
           <summary>Рестораны</summary>
           {% for restaurant in item.suitable_restaurants %}
           <li>
-            {{ restaurant }}
+            {{ restaurant.restaurant }} - {{restaurant.distance|floatformat:"-2"}} км.
           </li>
           {% endfor %}
         </details>

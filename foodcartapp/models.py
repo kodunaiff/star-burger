@@ -133,6 +133,16 @@ class OrderQuerySet(models.QuerySet):
             total=Sum(F('orders__quantity') * F('orders__product__price'))
         )
 
+    def ordered_by_status_and_id(self):
+        return self.annotate(
+            status_order=models.Case(
+                models.When(status="new", then=1),
+                models.When(status="confirmed", then=2),
+                models.When(status="packed", then=3),
+                models.When(status="delivered", then=4)
+            )
+        ).order_by("status_order", "id")
+
 
 class Order(models.Model):
     STATUS_CHOICES = [
