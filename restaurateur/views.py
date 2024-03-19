@@ -94,7 +94,7 @@ def view_orders(request):
     orders = Order.objects.exclude(status='deliv').prefetch_related(
         'orders').calculate_order().ordered_by_status_and_id()
     order_items = []
-    menu_items = RestaurantMenuItem.objects.prefetch_related('product', 'restaurant')
+    menu_items = RestaurantMenuItem.objects.select_related('restaurant').select_related('product')
 
     restaurant_contents = {}
     for item in menu_items:
