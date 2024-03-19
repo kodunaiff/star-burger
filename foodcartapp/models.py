@@ -247,7 +247,6 @@ class OrderElements(models.Model):
         validators=[MinValueValidator(0)]
     )
 
-
     class Meta:
         ordering = ['order']
         verbose_name = 'элементы заказа'

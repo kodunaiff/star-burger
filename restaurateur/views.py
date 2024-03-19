@@ -5,11 +5,9 @@ from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import View
-import requests
-from django.conf import settings
-from geopy import distance
 
-from foodcartapp.models import Product, Restaurant, Order, OrderElements, RestaurantMenuItem
+from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
+from loc_app.coordinates import calculate_distance
 
 
 class Login(forms.Form):
@@ -90,38 +88,11 @@ def view_restaurants(request):
         'restaurants': Restaurant.objects.all(),
     })
 
-def fetch_coordinates(apikey, address):
-    base_url = "https://geocode-maps.yandex.ru/1.x"
-    response = requests.get(base_url, params={
-        "geocode": address,
-        "apikey": apikey,
-        "format": "json",
-    })
-    response.raise_for_status()
-    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
-
-    if not found_places:
-        return None
-
-    most_relevant = found_places[0]
-    lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
-    return lat, lon
-
-def calculate_distance(order_address, restaurant_address):
-    try:
-        order_coords = fetch_coordinates(settings.YANDEX_API_KEY, order_address)
-        restaurant_coords = fetch_coordinates(settings.YANDEX_API_KEY, restaurant_address)
-    except (requests.HTTPError, requests.ConnectionError):
-        return "Ошибка определения координат"
-    if not order_coords:
-        return "Ошибка определения координат"
-    distance_to_restaurant = distance.distance(restaurant_coords, order_coords)
-    return distance_to_restaurant.km
-
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders = Order.objects.exclude(status='deliv').prefetch_related('orders').calculate_order().ordered_by_status_and_id()
+    orders = Order.objects.exclude(status='deliv').prefetch_related(
+        'orders').calculate_order().ordered_by_status_and_id()
     order_items = []
     menu_items = RestaurantMenuItem.objects.prefetch_related('product', 'restaurant')
 
@@ -155,11 +126,10 @@ def view_orders(request):
             'payment': order.get_payment_display(),
             "suitable_restaurants": [{
                 "restaurant": restaurant,
-                "distance": calculate_distance(restaurant.address, order.address)
+                "distance": calculate_distance(order.address, restaurant.address)
             } for restaurant in order.suitable_restaurants],
             'restaurant': order.restaurant,
         }
         order_items.append(item)
-
 
     return render(request, template_name='order_items.html', context={'order_items': order_items})
