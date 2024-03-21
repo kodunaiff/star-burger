@@ -77,14 +77,7 @@ class OrderSerializer(ModelSerializer):
 @api_view(['POST'])
 @transaction.atomic
 def register_order(request):
-    try:
-        food_order = request.data
-    except ValueError as error:
-        return JsonResponse({
-            "Error": error
-        })
-
-    serializer = OrderSerializer(data=food_order)
+    serializer = OrderSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
     order = Order.objects.create(
