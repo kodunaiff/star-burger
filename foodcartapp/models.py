@@ -237,7 +237,7 @@ class OrderElements(models.Model):
     )
     quantity = models.IntegerField(
         verbose_name='количество',
-        validators=[MinValueValidator(0),
+        validators=[MinValueValidator(1),
                     MaxValueValidator(100)]
     )
     position_cost = models.DecimalField(
