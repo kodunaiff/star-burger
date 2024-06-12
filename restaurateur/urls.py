@@ -1,5 +1,5 @@
-from django.urls import path
 from django.shortcuts import redirect
+from django.urls import path
 
 from . import views
 
@@ -9,7 +9,6 @@ urlpatterns = [
     path('', lambda request: redirect('restaurateur:ProductsView')),
 
     path('products/', views.view_products, name="ProductsView"),
-    path('products2/', views.index, name="IndexView"),
 
     path('restaurants/', views.view_restaurants, name="RestaurantView"),
 
