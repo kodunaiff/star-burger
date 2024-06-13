@@ -1,7 +1,6 @@
 import os
 
 import dj_database_url
-
 from environs import Env
 
 env = Env()
@@ -84,7 +83,10 @@ MEDIA_URL = '/media/'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='sqlite:////{0}'.format(os.path.join(BASE_DIR, 'db.sqlite3'))
+        default=env.str(
+            'DB_URL',
+            'sqlite:////{0}'.format(os.path.join(BASE_DIR, 'db.sqlite3'))
+        )
     )
 }
 
