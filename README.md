@@ -149,6 +149,51 @@ Parcel будет следить за файлами в каталоге `bundle
 - `ALLOWED_HOSTS` — [см. документацию Django](https://docs.djangoproject.com/en/3.1/ref/settings/#allowed-hosts)
 - `ROLLBAR_TOKEN` — Токен для логирования ошибок вашего сайта подробнее на [Rollbar](https://app.rollbar.com/)
 
+## Деплойный скрипт
+Для упрощения процесса можно сделать bash скрипт для деплоя, который будет содержать в себе описанные выше процессы. Пример такого скрипта:
+````
+#! /usr/bin/bash
+
+set -e # обеспечивает завершение скрипта при ошибке
+
+cd /opt/star-burger/
+
+# Проверка, есть ли обновления в репозитории. Если обновлений нет, скрипт завершается
+
+git_result=$(git pull)
+if [[ "$git_result" == "Already up to date." ]]
+then
+	echo $git_result
+	exit 0
+fi
+
+source venv/bin/activate
+
+pip install -r requirements.txt
+
+/bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=1024
+/sbin/mkswap /var/swap.1
+/sbin/swapon /var/swap.1
+
+npm ci --force # --force обеспечивает выполнение без взаимодействия с пользователем
+
+python manage.py migrate
+
+python manage.py collectstatic --noinput # --noinput для того же, для чего --force в npm ci
+
+./node_modules/.bin/parcel build bundles-src/index.js --dist-dir bundles --public-url="./"
+
+# обновление автоматизированных сервисов Django и nginx сервера
+systemctl restart star-burger.service
+systemctl reload nginx.service
+
+# отключает эффект от /sbin/swapon, иначе он выдаёт ошибку при последующих запусках
+/sbin/swapoff /var/swap.1
+
+echo Finished!
+
+````
+
 ## Цели проекта
 
 Код написан в учебных целях — это урок в курсе по Python и веб-разработке на сайте [Devman](https://dvmn.org). За основу был взят код проекта [FoodCart](https://github.com/Saibharath79/FoodCart).
