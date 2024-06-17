@@ -143,5 +143,9 @@ cython_debug/
 
 .parcel-cache/
 .idea/
+<<<<<<< HEAD
 data.json
 staticfiles
+=======
+data_g.json
+>>>>>>> 2a0b3feff0353b830e715a78879e97e1491e6a76
