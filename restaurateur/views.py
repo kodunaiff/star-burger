@@ -2,7 +2,6 @@ from django import forms
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import user_passes_test
-from django.http import HttpResponse
 
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
@@ -10,12 +9,6 @@ from django.views import View
 
 from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
 from loc_app.coordinates import calculate_distance
-
-
-def index(request):
-    a = None
-    a.hello() # Creating an error with an invalid line of code
-    return HttpResponse("Hello, world. You're at the pollapp index.")
 
 
 class Login(forms.Form):
