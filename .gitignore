@@ -143,3 +143,4 @@ cython_debug/
 
 .parcel-cache/
 .idea/
+data_g.json
