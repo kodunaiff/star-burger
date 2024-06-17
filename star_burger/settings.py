@@ -1,5 +1,5 @@
 import os
-
+from git import Repo
 import dj_database_url
 from environs import Env
 
@@ -131,6 +131,7 @@ YANDEX_API_KEY = env.str("YANDEX_API_KEY")
 ROLLBAR = {
     "access_token": env.str("ROLLBAR_TOKEN"),
     "environment": env.str("ENVIRONMENT", "production"),
+    "branch": Repo(path=BASE_DIR).active_branch.name,
     "code_version": "1.0",
     "root": BASE_DIR,
 }
