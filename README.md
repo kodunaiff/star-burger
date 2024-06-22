@@ -148,6 +148,8 @@ Parcel будет следить за файлами в каталоге `bundle
 - `SECRET_KEY` — секретный ключ проекта. Он отвечает за шифрование на сайте. Например, им зашифрованы все пароли на вашем сайте.
 - `ALLOWED_HOSTS` — [см. документацию Django](https://docs.djangoproject.com/en/3.1/ref/settings/#allowed-hosts)
 - `ROLLBAR_TOKEN` — Токен для логирования ошибок вашего сайта подробнее на [Rollbar](https://app.rollbar.com/)
+- `YANDEX_API_KEY` — API ключ для подключения геокодера
+- `DB_URL` — настройки базы данных для PostgreSQL в формате URL
 
 ## Деплойный скрипт
 Для упрощения процесса можно сделать bash скрипт для деплоя, который будет содержать в себе описанные выше процессы. Пример такого скрипта:
@@ -167,7 +169,7 @@ then
 	exit 0
 fi
 
-source venv/bin/activate
+source .venv/bin/activate
 
 pip install -r requirements.txt
 
@@ -189,6 +191,23 @@ systemctl reload nginx.service
 
 # отключает эффект от /sbin/swapon, иначе он выдаёт ошибку при последующих запусках
 /sbin/swapoff /var/swap.1
+
+if [ -e ".env" ]; then
+    source .env
+fi
+
+GIT_HASH=$(git rev-parse --short HEAD)
+
+if [ -v ROLLBAR_TOKEN ]; then
+   curl -H "X-Rollbar-Access-Token: ${ROLLBAR_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -X POST 'https://api.rollbar.com/api/1/deploy' \
+        -d "{\"environment\": \"production\", \"revision\": \"${GIT_HASH}\", \
+        \"rollbar_name\": \"Kodu\", \"local_username\": \"$(whoami)\", \
+        \"comment\": \"deployment\", \"status\": \"succeeded\"}"
+   echo "Sended log to LOGBAR"
+fi
+
 
 echo Finished!
 
